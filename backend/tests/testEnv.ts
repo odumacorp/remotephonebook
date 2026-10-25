@@ -1,0 +1,15 @@
+export const TEST_ENV: Record<string, string> = {
+  NODE_ENV: 'test',
+  DATABASE_URL: process.env.TEST_DATABASE_URL ?? 'postgres://rpb:rpb_dev_password@localhost:5432/remotephonebook_test',
+  AUTH_SECRET: 'test-secret-test-secret-test-secret-123',
+  AFRICASTALKING_ENV: 'mock',
+  AFRICASTALKING_USSD_SERVICE_CODE: '*123#',
+  REQUIRE_VERIFICATION: 'true',
+  USSD_CALLBACK_TOKEN: '',
+  USSD_REQUIRE_OTP_FOR_UNTRUSTED: 'false',
+  USSD_PAGE_SIZE: '5',
+  USSD_MAX_CHARS: '182',
+  DEMO_MODE_ENABLED: 'true',
+  DEV_TOOLS_ENABLED: 'true',
+  CONTACT_SYNC_SETTINGS: '{"maxBatchSize":100}',
+};

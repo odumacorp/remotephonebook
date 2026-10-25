@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "RemotePhonebook",
+    "slug": "remotephonebook",
+    "scheme": "remotephonebook",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.remotephonebook"
+    },
+    "android": {
+      "package": "com.example.remotephonebook",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4F1",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "blockedPermissions": ["android.permission.WRITE_CONTACTS"],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-background-task",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "RemotePhonebook reads your contacts' names and phone numbers and, with your consent, stores them in your account so you can look them up from any phone via USSD."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}

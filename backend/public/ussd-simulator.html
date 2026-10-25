@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>USSD Simulator</title>
+<style>
+  :root { --bg:#eef2f6; --phone:#1d2430; --screen:#d9e4d1; --ink:#14210f; --muted:#5b6575; --accent:#0f766e; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f141b; --card:#18202b; --muted:#9aa6b6; } body { color:#e6edf5; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); padding:16px; }
+  main { max-width: 980px; margin: 0 auto; display:grid; gap:20px; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); }
+  @media (max-width: 760px) { main { grid-template-columns: minmax(0, 1fr); } }
+  h1 { font-size: 20px; margin: 0 0 4px; } p.sub { margin:0 0 16px; color:var(--muted); font-size:14px; }
+  .phone { background:var(--phone); border-radius:28px; padding:22px 16px; box-shadow:0 10px 30px #0003; }
+  .screen { background:var(--screen); color:var(--ink); border-radius:10px; min-height:250px; padding:12px; font: 15px/1.35 "Courier New", monospace; white-space:pre-wrap; word-break:break-word; }
+  .screen .tag { font: 600 11px system-ui; letter-spacing:.05em; color:#3c5a35; margin-bottom:6px; }
+  .screen.ended { opacity:.75; }
+  form { display:flex; gap:8px; margin-top:12px; }
+  input { flex:1; min-width:0; font-size:16px; padding:10px; border-radius:8px; border:1px solid #445; background:#0b0f14; color:#fff; }
+  button { font-size:15px; padding:10px 14px; border-radius:8px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:#374151; }
+  .row { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .card { background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 3px #0001; overflow:hidden; }
+  label { display:block; font-size:13px; color:var(--muted); margin:8px 0 4px; }
+  .card input { background:transparent; color:inherit; border-color:#8884; }
+  .log { font: 12px/1.4 ui-monospace, monospace; max-height:280px; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+  .meta { font-size:12px; color:var(--muted); margin-top:8px; }
+  .warn { font-size:13px; background:#fef3c7; color:#713f12; border-radius:8px; padding:8px 10px; margin-top:12px; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>USSD Simulator</h1>
+    <p class="sub">Simulates an Africa's Talking USSD session against this server. Development only.</p>
+    <div class="phone">
+      <div id="screen" class="screen"><div class="tag">READY</div>Press "Dial {{SERVICE_CODE}}" to start.</div>
+      <form id="reply">
+        <input id="input" autocomplete="off" placeholder="Reply…" aria-label="USSD reply" disabled />
+        <button id="send" disabled>Send</button>
+      </form>
+      <div class="row">
+        <button type="button" id="dial">Dial {{SERVICE_CODE}}</button>
+        <button type="button" class="secondary" id="hangup">Hang up</button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="warn">Real USSD shows everything typed, including passwords. Prefer a USSD PIN from a trusted phone.</div>
+  </section>
+  <section class="card">
+    <label for="phone">Caller phone number</label>
+    <input id="phone" value="+254700000999" />
+    <div class="meta">Seeded test user: +254700000999 / test@remotephonebook.test, password <code>TestPass2026!</code>, PIN <code>2468</code> (from <code>npm run seed -- --with-test-user</code>).</div>
+    <label>Request log (what Africa's Talking would send)</label>
+    <div class="log" id="log"></div>
+    <label>Mock outbox (SMS / email codes)</label>
+    <button type="button" class="secondary" id="outbox">Refresh outbox</button>
+    <div class="log" id="outboxLog"></div>
+  </section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let sessionId = null, inputs = [];
+  function show(kind, text) {
+    $('screen').className = 'screen' + (kind === 'END' ? ' ended' : '');
+    $('screen').innerHTML = '';
+    const tag = document.createElement('div'); tag.className = 'tag';
+    tag.textContent = kind === 'END' ? 'SESSION ENDED' : 'AWAITING INPUT';
+    $('screen').append(tag, document.createTextNode(text));
+    const live = kind === 'CON';
+    $('input').disabled = !live; $('send').disabled = !live;
+    if (live) $('input').focus();
+  }
+  async function send() {
+    const text = inputs.join('*');
+    const body = { sessionId, phoneNumber: $('phone').value.trim(), text };
+    const started = performance.now();
+    const res = await fetch('/api/dev/ussd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const out = await res.text();
+    const ms = Math.round(performance.now() - started);
+    const masked = { ...body, text: text ? '[' + inputs.length + ' input(s), hidden here]' : '' };
+    $('log').textContent = `→ ${JSON.stringify(masked)}\n← ${out.slice(0, 3)} (${out.length - 4} chars, ${ms} ms)\n\n` + $('log').textContent;
+    $('meta').textContent = `session ${sessionId.slice(0, 8)}… · ${out.length - 4}/{{MAX}} chars`;
+    show(out.slice(0, 3), out.slice(4));
+  }
+  $('dial').onclick = () => { sessionId = 'SIM-' + crypto.randomUUID(); inputs = []; send(); };
+  $('hangup').onclick = () => { sessionId = null; show('END', 'Call ended.'); };
+  $('reply').onsubmit = (e) => { e.preventDefault(); inputs.push($('input').value); $('input').value = ''; send(); };
+  $('outbox').onclick = async () => {
+    const res = await fetch('/api/dev/outbox'); const { items } = await res.json();
+    $('outboxLog').textContent = items.slice(0, 10).map((m) => `${m.createdAt}  ${m.channel} → ${m.destination}\n${m.body}`).join('\n\n') || 'Empty';
+  };
+</script>
+</body>
+</html>
